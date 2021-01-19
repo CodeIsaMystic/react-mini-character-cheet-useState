@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useReducer } from "react";
 import friendlyWords from "friendly-words";
 import {
   Combobox,
@@ -12,6 +12,55 @@ import "./styles.css";
 
 // inspiration
 // https://media.wizards.com/2015/downloads/dnd/DDALRoD_CharacterSheet.pdf
+
+let array = [1, 2, 3, 4, 5];
+let add = (x, y) => x + y;
+
+let sum = array.reduce(add, 0);
+
+console.log(sum);
+
+// 0 + 1
+// 1 + 2
+// 3 + 3
+// 6 + 4
+// 10 + 5
+
+const initialState = {
+  count: 0,
+  cake: true,
+  switches: "zilents",
+  user: { name: "cassidy" }
+};
+
+// dispatch
+
+const actions = [
+  { type: "ADD", by: 2 },
+  { type: "ADD", by: "10" },
+  { type: "MINUS", by: 4 },
+  { type: "MINUS", by: -4 },
+  { type: "EAT_CAKE" },
+  { type: "SWITCH_THE_SWITCH", clack: "Zealios" }
+];
+
+function reducer(state, action) {
+  if (action.type === "ADD") {
+    return { ...state, count: state.count + action.by };
+  } else if (action.type === "MINUS") {
+    return { ...state, count: state.count - action.by };
+  } else if (action.type === "EAT_CAKE") {
+    return { ...state, cake: false };
+  } else if (action.type === "SWITCH_THE_SWITCH") {
+    return { ...state, switches: action.clack };
+  }
+  return state;
+}
+
+console.log(actions.reduce(reducer, initialState));
+
+
+
 
 let backgrounds = [
   "Noble",
@@ -37,26 +86,75 @@ function randomName() {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
+function useMySpecialReducer() {
+  let [state, dispatch] = useReducer(
+    (state, action) => {
+      switch (action.type) {
+        case "TOGGLE_DARK_MODE": {
+          return {
+            ...state,
+            darkMode: !state.darkMode
+          };
+        }
+        case "BG_SELECT": {
+          return {
+            ...state,
+            background: action.value,
+            error: !backgrounds.includes(action.value)
+              ? "This background does NOT exist."
+              : null
+          };
+        }
+        case "NAME_CHARACTER": {
+          return {
+            ...state,
+            name: action.name,
+            error:
+              action.name.length > 15
+                ? "That name is way too long, bucko"
+                : null
+          };
+        }
+        case "RANDOM_VALUES": {
+          return {
+            ...state,
+            name: randomName(),
+            background: randomBackground()
+          };
+        }
+        case "DISMISS_ERROR": {
+          return { ...state, error: null };
+        }
+        default: {
+          return state;
+        }
+      }
+    },
+    {
+      darkMode: false,
+      name: "",
+      background: "",
+      error: null
+    }
+  );
+  return [state, dispatch];
+}
+
 export default function App() {
-  let [darkMode, setDarkMode] = useState(false);
-  let [name, setName] = useState("");
-  let [background, setBackground] = useState("");
-  let [error, setError] = useState(null);
+  let [
+    { darkMode, name, background, error },
+    dispatch
+  ] = useMySpecialReducer();
 
   function handleBackgroundSelect(value) {
-    setBackground(value);
-    if (!backgrounds.includes(value)) {
-      setError("This background does NOT exist.");
-    } else {
-      setError(null);
-    }
+    dispatch({ type: "BG_SELECT", value });
   }
 
   return (
     <div className={`App ${darkMode ? "darkmode" : ""}`}>
       <button
         onClick={() => {
-          setDarkMode(!darkMode);
+          dispatch({ type: "TOGGLE_DARK_MODE" });
         }}
       >
         Dark Mode {darkMode ? "ON" : "OFF"}
@@ -67,10 +165,10 @@ export default function App() {
         placeholder="Type your name"
         value={name}
         onChange={event => {
-          setName(event.target.value);
-          if (event.target.value.length > 15) {
-            setError("Name is WAY too long, bucko.");
-          }
+          dispatch({
+            type: "NAME_CHARACTER",
+            name: event.target.value
+          });
         }}
       />
       <Combobox onSelect={handleBackgroundSelect}>
@@ -97,7 +195,7 @@ export default function App() {
           {error}
           <button
             onClick={() => {
-              setError(null);
+              dispatch({ type: "DISMISS_ERROR" });
             }}
           >
             Dismiss
@@ -110,8 +208,7 @@ export default function App() {
       </div>
       <button
         onClick={() => {
-          setName(randomName());
-          setBackground(randomBackground());
+          dispatch({ type: "RANDOM_VALUES" });
         }}
       >
         Do it all for me instead
